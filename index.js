@@ -20,7 +20,7 @@ function onlyMe(req, res, next) {
 
 // Home
 app.get('/', (req, res) => {
-  res.send('<a href="/login">Login with Discord</a>');
+  res.redirect('/login');
 });
 
 // Login
@@ -29,7 +29,7 @@ app.get('/login', (req, res) => {
     client_id: CLIENT_ID,
     redirect_uri: REDIRECT_URI,
     response_type: 'code',
-    scope: 'guilds',
+    scope: 'indentify',
   });
   res.redirect(`https://discord.com/oauth2/authorize?${params}`);
 });
