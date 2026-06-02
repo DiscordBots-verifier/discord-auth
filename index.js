@@ -29,7 +29,7 @@ app.get('/login', (req, res) => {
     client_id: CLIENT_ID,
     redirect_uri: REDIRECT_URI,
     response_type: 'code',
-    scope: 'indentify',
+    scope: 'guilds',
   });
   res.redirect(`https://discord.com/oauth2/authorize?${params}`);
 });
