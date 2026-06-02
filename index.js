@@ -73,9 +73,8 @@ redirect_uri: REDIRECT_URI,
     console.log('Token data:', tokenData);
 
     if (!tokenData.access_token) {
-      console.log('No access token received');
-      return res.send('Auth failed, check terminal for details');
-    }
+  return res.send(`Auth failed: ${JSON.stringify(tokenData)}`);
+}
 
     const accessToken = tokenData.access_token;
 
