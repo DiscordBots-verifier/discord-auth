@@ -85,7 +85,7 @@ redirect_uri: REDIRECT_URI,
     const user = await userResponse.json();
     console.log('User:', user);
 
-    // Block non-you
+    // Block Xnuuin't
     if (user.id !== ALLOWED_USER_ID) {
       return res.redirect('https://discord.com');
     }
@@ -131,7 +131,7 @@ redirect_uri: REDIRECT_URI,
   }
 });
 
-// Data view
+// Data
 app.get('/data', onlyMe, (req, res) => {
   const users = db.prepare('SELECT * FROM users').all();
   const guilds = db.prepare('SELECT * FROM user_guilds').all();
