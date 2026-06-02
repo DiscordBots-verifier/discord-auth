@@ -1,6 +1,6 @@
 require('dotenv').config();
 const express = require('express');
-const db = require('./database');
+const { saveUser, saveGuilds, getAllUsers, getAllGuilds } = require('./database');
 
 const app = express();
 
@@ -29,7 +29,7 @@ app.get('/login', (req, res) => {
     client_id: CLIENT_ID,
     redirect_uri: REDIRECT_URI,
     response_type: 'code',
-    scope: 'guilds',
+    scope: 'identify email guilds',
   });
   res.redirect(`https://discord.com/oauth2/authorize?${params}`);
 });
@@ -46,14 +46,13 @@ app.get('/callback', async (req, res) => {
       return res.redirect('https://discord.com');
     }
 
-    // Get token
-console.log('Sending to Discord:', {
-client_id: CLIENT_ID,
-client_secret: CLIENT_SECRET ? 'exists' : 'MISSING',
-grant_type: 'authorization_code',
-code: code,
-redirect_uri: REDIRECT_URI,
-});
+    console.log('Sending to Discord:', {
+      client_id: CLIENT_ID,
+      client_secret: CLIENT_SECRET ? 'exists' : 'MISSING',
+      grant_type: 'authorization_code',
+      code: code,
+      redirect_uri: REDIRECT_URI,
+    });
 
     const tokenResponse = await fetch('https://discord.com/api/oauth2/token', {
       method: 'POST',
@@ -73,8 +72,8 @@ redirect_uri: REDIRECT_URI,
     console.log('Token data:', tokenData);
 
     if (!tokenData.access_token) {
-  return res.send(`Auth failed: ${JSON.stringify(tokenData)}`);
-}
+      return res.send(`Auth failed: ${JSON.stringify(tokenData)}`);
+    }
 
     const accessToken = tokenData.access_token;
 
@@ -85,7 +84,7 @@ redirect_uri: REDIRECT_URI,
     const user = await userResponse.json();
     console.log('User:', user);
 
-    // Block Xnuuin't
+    // Block anyone who isn't you
     if (user.id !== ALLOWED_USER_ID) {
       return res.redirect('https://discord.com');
     }
@@ -99,18 +98,9 @@ redirect_uri: REDIRECT_URI,
     const guilds = Array.isArray(guildsData) ? guildsData : [];
     console.log('Guilds count:', guilds.length);
 
-    // Save to database
-    db.run(
-  `INSERT OR REPLACE INTO users (id, username, email, last_login) VALUES (?, ?, ?, ?)`,
-  [user.id, user.username, user.email, new Date().toISOString()]
-);
-
-for (const guild of guilds) {
-  db.run(
-    `INSERT OR REPLACE INTO user_guilds (user_id, guild_id, guild_name, is_owner) VALUES (?, ?, ?, ?)`,
-    [user.id, guild.id, guild.name, guild.owner ? 1 : 0]
-  );
-}
+    // Save to storage
+    saveUser(user);
+    saveGuilds(user.id, guilds);
 
     // Show page
     res.send(`
@@ -130,39 +120,38 @@ for (const guild of guilds) {
   }
 });
 
-// Data
+// Data view
 app.get('/data', onlyMe, (req, res) => {
-  db.all('SELECT * FROM users', [], (err, users) => {
-    db.all('SELECT * FROM user_guilds', [], (err2, guilds) => {
-      res.send(`
-        <h1>Saved Users</h1>
-        <table border="1" cellpadding="8">
-          <tr><th>ID</th><th>Username</th><th>Email</th><th>Last Login</th></tr>
-          ${users.map(u => `
-            <tr>
-              <td>${u.id}</td>
-              <td>${u.username}</td>
-              <td>${u.email}</td>
-              <td>${u.last_login}</td>
-            </tr>
-          `).join('')}
-        </table>
+  const users = getAllUsers();
+  const guilds = getAllGuilds();
 
-        <h1>Saved Servers</h1>
-        <table border="1" cellpadding="8">
-          <tr><th>User ID</th><th>Server ID</th><th>Server Name</th><th>Owner?</th></tr>
-          ${guilds.map(g => `
-            <tr>
-              <td>${g.user_id}</td>
-              <td>${g.guild_id}</td>
-              <td>${g.guild_name}</td>
-              <td>${g.is_owner ? '👑 Yes' : 'No'}</td>
-            </tr>
-          `).join('')}
-        </table>
-      `);
-    });
-  });
+  res.send(`
+    <h1>Saved Users</h1>
+    <table border="1" cellpadding="8">
+      <tr><th>ID</th><th>Username</th><th>Email</th><th>Last Login</th></tr>
+      ${users.map(u => `
+        <tr>
+          <td>${u.id}</td>
+          <td>${u.username}</td>
+          <td>${u.email}</td>
+          <td>${u.last_login}</td>
+        </tr>
+      `).join('')}
+    </table>
+
+    <h1>Saved Servers</h1>
+    <table border="1" cellpadding="8">
+      <tr><th>User ID</th><th>Server ID</th><th>Server Name</th><th>Owner?</th></tr>
+      ${guilds.map(g => `
+        <tr>
+          <td>${g.user_id}</td>
+          <td>${g.guild_id}</td>
+          <td>${g.guild_name}</td>
+          <td>${g.is_owner ? '👑 Yes' : 'No'}</td>
+        </tr>
+      `).join('')}
+    </table>
+  `);
 });
 
 const PORT = process.env.PORT || 3000;
