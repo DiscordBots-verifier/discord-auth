@@ -100,18 +100,17 @@ redirect_uri: REDIRECT_URI,
     console.log('Guilds count:', guilds.length);
 
     // Save to database
-    db.prepare(`
-      INSERT OR REPLACE INTO users (id, username, email, last_login)
-      VALUES (?, ?, ?, ?)
-    `).run(user.id, user.username, user.email, new Date().toISOString());
+    db.run(
+  `INSERT OR REPLACE INTO users (id, username, email, last_login) VALUES (?, ?, ?, ?)`,
+  [user.id, user.username, user.email, new Date().toISOString()]
+);
 
-    const insertGuild = db.prepare(`
-      INSERT OR REPLACE INTO user_guilds (user_id, guild_id, guild_name, is_owner)
-      VALUES (?, ?, ?, ?)
-    `);
-    for (const guild of guilds) {
-      insertGuild.run(user.id, guild.id, guild.name, guild.owner ? 1 : 0);
-    }
+for (const guild of guilds) {
+  db.run(
+    `INSERT OR REPLACE INTO user_guilds (user_id, guild_id, guild_name, is_owner) VALUES (?, ?, ?, ?)`,
+    [user.id, guild.id, guild.name, guild.owner ? 1 : 0]
+  );
+}
 
     // Show page
     res.send(`
@@ -133,36 +132,37 @@ redirect_uri: REDIRECT_URI,
 
 // Data
 app.get('/data', onlyMe, (req, res) => {
-  const users = db.prepare('SELECT * FROM users').all();
-  const guilds = db.prepare('SELECT * FROM user_guilds').all();
+  db.all('SELECT * FROM users', [], (err, users) => {
+    db.all('SELECT * FROM user_guilds', [], (err2, guilds) => {
+      res.send(`
+        <h1>Saved Users</h1>
+        <table border="1" cellpadding="8">
+          <tr><th>ID</th><th>Username</th><th>Email</th><th>Last Login</th></tr>
+          ${users.map(u => `
+            <tr>
+              <td>${u.id}</td>
+              <td>${u.username}</td>
+              <td>${u.email}</td>
+              <td>${u.last_login}</td>
+            </tr>
+          `).join('')}
+        </table>
 
-  res.send(`
-    <h1>Saved Users</h1>
-    <table border="1" cellpadding="8">
-      <tr><th>ID</th><th>Username</th><th>Email</th><th>Last Login</th></tr>
-      ${users.map(u => `
-        <tr>
-          <td>${u.id}</td>
-          <td>${u.username}</td>
-          <td>${u.email}</td>
-          <td>${u.last_login}</td>
-        </tr>
-      `).join('')}
-    </table>
-
-    <h1>Saved Servers</h1>
-    <table border="1" cellpadding="8">
-      <tr><th>UserID</th><th>ID</th><th>Name</th><th>Own</th></tr>
-      ${guilds.map(g => `
-        <tr>
-          <td>${g.user_id}</td>
-          <td>${g.guild_id}</td>
-          <td>${g.guild_name}</td>
-          <td>${g.is_owner ? 'Y' : 'N'}</td>
-        </tr>
-      `).join('')}
-    </table>
-  `);
+        <h1>Saved Servers</h1>
+        <table border="1" cellpadding="8">
+          <tr><th>User ID</th><th>Server ID</th><th>Server Name</th><th>Owner?</th></tr>
+          ${guilds.map(g => `
+            <tr>
+              <td>${g.user_id}</td>
+              <td>${g.guild_id}</td>
+              <td>${g.guild_name}</td>
+              <td>${g.is_owner ? '👑 Yes' : 'No'}</td>
+            </tr>
+          `).join('')}
+        </table>
+      `);
+    });
+  });
 });
 
 const PORT = process.env.PORT || 3000;
