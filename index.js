@@ -46,27 +46,25 @@ app.get('/callback', async (req, res) => {
       return res.redirect('https://discord.com');
     }
 
-    console.log('Sending to Discord:', {
-      client_id: CLIENT_ID,
-      client_secret: CLIENT_SECRET ? 'exists' : 'MISSING',
-      grant_type: 'authorization_code',
-      code: code,
-      redirect_uri: REDIRECT_URI,
-    });
+console.log('Sending to Discord:', {
+  client_id: CLIENT_ID,
+  client_secret_preview: CLIENT_SECRET ? `${CLIENT_SECRET.slice(0,4)}...${CLIENT_SECRET.slice(-4)}` : 'MISSING',
+  redirect_uri: REDIRECT_URI,
+});
 
-    const tokenResponse = await fetch('https://discord.com/api/oauth2/token', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({
-        client_id: CLIENT_ID,
-        client_secret: CLIENT_SECRET,
-        grant_type: 'authorization_code',
-        code: code,
-        redirect_uri: REDIRECT_URI,
-      }),
-    });
+const tokenResponse = await fetch('https://discord.com/api/oauth2/token', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/x-www-form-urlencoded',
+  },
+  body: new URLSearchParams({
+    client_id: CLIENT_ID,
+    client_secret: CLIENT_SECRET,
+    grant_type: 'authorization_code',
+    code: code,
+    redirect_uri: REDIRECT_URI,
+  }),
+});
 
     const tokenData = await tokenResponse.json();
     console.log('Token data:', tokenData);
